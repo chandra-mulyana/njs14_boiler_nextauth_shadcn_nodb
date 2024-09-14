@@ -1,17 +1,72 @@
-import Link from "next/link";
+"use client";
 
 import { Button } from "@/components/ui/button";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
+	CardFooter,
 } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { signInSchema } from "@/lib/zod";
+import { useState, useTransition } from "react";
+import { handleCredentialsSignIn } from "@/app/actions/authActions";
+import { Social } from "@/components/auth/social";
+
+// import ConfirmationDialog, {
+// 	useAlertDialog,
+// } from "@/components/peringatan/confirm-dialog";
+import ReusableAlertDialog, {
+	useAlertDialog,
+} from "@/components/peringatan/alert-dialog";
 
 export default function LoginForm() {
+	const [isPending, startTransition] = useTransition();
+	const [globalError, setGlobalError] = useState<string | undefined>("");
+	const { isOpen, openAlert, closeAlert } = useAlertDialog();
+
+	const formsch = useForm<z.infer<typeof signInSchema>>({
+		resolver: zodResolver(signInSchema),
+		defaultValues: {
+			email: "",
+			password: "",
+		},
+	});
+
+	const submitHandler = async (values: z.infer<typeof signInSchema>) => {
+		startTransition(async () => {
+			try {
+				const result = await handleCredentialsSignIn(values);
+				setGlobalError(result?.error);
+				openAlert();
+				console.log("Result : ", result);
+			} catch (error) {
+				console.log("Ada error");
+			}
+		});
+	};
+
+	const handleConfirm = () => {
+		console.log("Confirmed!");
+		// Add your confirmation logic here
+	};
+
 	return (
 		<Card className="mx-auto max-w-sm">
 			<CardHeader>
@@ -21,42 +76,90 @@ export default function LoginForm() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div className="grid gap-4">
-					<div className="grid gap-2">
-						<Label htmlFor="email">Email</Label>
-						<Input
-							id="email"
-							type="email"
-							placeholder="m@example.com"
-							required
+				{globalError && (
+					// <ConfirmationDialog
+					// 	isOpen={isOpen}
+					// 	close={closeAlert}
+					// 	title="Konfirmasi"
+					// 	description={globalError}
+					// 	confirmText="OK"
+					// 	cancelText="Cancel"
+					// 	onConfirm={handleConfirm}
+					// 	onCancel={handleCancel}
+					// />
+
+					// // Mode : False -> Error Alert
+					//      : True -> Informasi Alert
+
+					<ReusableAlertDialog
+						isOpen={isOpen}
+						close={closeAlert}
+						mode={false}
+						title="Error"
+						description={globalError}
+						OKText="Close"
+						onConfirm={handleConfirm}
+					/>
+				)}
+				<Form {...formsch}>
+					<form
+						className="space-y-8"
+						onSubmit={formsch.handleSubmit(submitHandler)}
+					>
+						<FormField
+							control={formsch.control}
+							name="email"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Email</FormLabel>
+									<FormControl>
+										<Input
+											disabled={isPending}
+											type="email"
+											placeholder="Enter your email"
+											autoComplete="off"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-					</div>
-					<div className="grid gap-2">
-						<div className="flex items-center">
-							<Label htmlFor="password">Password</Label>
-							<Link
-								href="#"
-								className="ml-auto inline-block text-sm underline"
-							>
-								Forgot your password?
-							</Link>
-						</div>
-						<Input id="password" type="password" required />
-					</div>
-					<Button type="submit" className="w-full">
-						Login
-					</Button>
-					<Button variant="outline" className="w-full">
-						Login with Google
-					</Button>
-				</div>
-				<div className="mt-4 text-center text-sm">
-					Don&apos;t have an account?{" "}
-					<Link href="#" className="underline">
-						Sign up
-					</Link>
-				</div>
+						<FormField
+							control={formsch.control}
+							name="password"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Password</FormLabel>
+									<FormControl>
+										<Input
+											disabled={isPending}
+											type="password"
+											placeholder="Enter password"
+											autoComplete="off"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<Button
+							disabled={isPending}
+							type="submit"
+							className="w-full"
+						>
+							Login with Credential
+						</Button>
+					</form>
+				</Form>
+				<span className="text-sm text-gray-500 text-center block pt-4">
+					or
+				</span>
 			</CardContent>
+			<CardFooter>
+				<Social />
+			</CardFooter>
 		</Card>
 	);
 }
